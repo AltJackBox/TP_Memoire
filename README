@@ -3,3 +3,9 @@ Ce package contient :
 - un petit programme contenant un test simple de l'initialisation de l'allocateur qui devra être implémenté dans mem.c : test_init
 - un Makefile vous permettant de compiler tout ces petits programmes et de tester votre allocateur avec une appli réelle (make test_ls)
 ATTENTION: sans implémentation correcte du début de l'allocateur, test_init boucle indéfiniment.
+
+Remarques sur l'utilisation du Makefile :
+    - make tests : lance nos tests 
+    - make test_ls : on doit avoir -DMEMORY_SIZE=128000
+
+

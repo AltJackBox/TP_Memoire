@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     void *ptr;
     printf("\n");
 	printf("Test 1\n"
-			"| ZL | ZO | ---> | ZL : ZL |"
+			"| ZL : ZL | ---> | ZO | ZO |"
  		"\n");
 	printf("Initializing memory\n");
     printf("On utilise une mémoire de taille 256 bytes\n");
@@ -24,20 +24,27 @@ int main(int argc, char *argv[]) {
 	mem_init(get_memory_adr(), (size_t)256);
     mem_show(afficher_zone);
     printf("\n");
-    ptr = mem_alloc((size_t)108);
-    printf("Memoire allouee en %d, de taille utilisateur 108\n", (int) (ptr-get_memory_adr()));
-    ptr = mem_alloc((size_t)104);
-    printf("Memoire allouee en %d, de taille utilisateur 104\n", (int) (ptr-get_memory_adr()));
+    ptr = mem_alloc((size_t)100);
+    if (ptr == NULL) {
+        fprintf(stderr,"Problème lors de l'allocation !\n");
+        exit(-1);
+    }
+    printf("Memoire allouee en %d, de taille utilisateur 100\n", (int) (ptr-get_memory_adr()));
     mem_show(afficher_zone);
     printf("\n");
     
-    mem_free(get_memory_adr()+24);
-    printf("Mémoire libérée en 24\n");
+    ptr = mem_alloc((size_t)100);
+    if (ptr == NULL) {
+        fprintf(stderr,"Problème lors de l'allocation !\n");
+        exit(-1);
+    }
+    printf("Memoire allouee en %d, de taille utilisateur 100\n", (int) (ptr-get_memory_adr()));
+
+    printf("\033[05;41m>\033[00m \033[01mIci on devrait observer qu'une zone occupée est plus grosse qu'une autre.\n\
+Car l'allocateur sait que la potentielle place restante ne suffirait pas pour les\n\
+méta-données d'une zone libre : \033[00m\n");
     mem_show(afficher_zone);
-    printf("\n");
-    mem_free(get_memory_adr()+144);
-    printf("Mémoire libérée en 144\n");
-    mem_show(afficher_zone);
+    
 	// TEST OK
 	return 0;
 }

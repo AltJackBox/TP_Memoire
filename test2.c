@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     void *ptr;
     printf("\n");
 	printf("Test 2\n"
-			"| ZO | ZL | ---> | ZL : ZL |"
+			"| ZL : ZL | ---> | ZO | ZL | + tentative de débordement"
  		"\n");
 	printf("Initializing memory\n");
     printf("On utilise une mémoire de taille 256 bytes\n");
@@ -24,20 +24,28 @@ int main(int argc, char *argv[]) {
 	mem_init(get_memory_adr(), (size_t)256);
     mem_show(afficher_zone);
     printf("\n");
-    ptr = mem_alloc((size_t)108);
+    ptr = mem_alloc((size_t)100);
+    if (ptr == NULL) {
+        fprintf(stderr,"Problème lors de l'allocation !\n");
+        exit(-1);
+    }
     printf("Memoire allouee en %d, de taille utilisateur 108\n", (int) (ptr-get_memory_adr()));
-    ptr = mem_alloc((size_t)104);
+    mem_show(afficher_zone);
+    printf("\n");
+
+    printf("\033[05;41m>\033[00m \033[01mIci nous allons tenter d'allouer 113 octets sachant que seulement\n\
+120 octets sont disponibles. Or, 113+8 (la taille des méta-données d'une ZO)\n\
+est égal à 121, soit 1 octet de trop pour allouer la zone et l'alligner...\033[00m\n");
+    ptr = mem_alloc((size_t)113);
+    if (ptr == NULL) {
+        fprintf(stderr,"Problème lors de l'allocation !\n");
+        exit(-1);
+    }
     printf("Memoire allouee en %d, de taille utilisateur 104\n", (int) (ptr-get_memory_adr()));
-    mem_show(afficher_zone);
-    printf("\n");
     
-    mem_free(get_memory_adr()+144);
-    printf("Mémoire libérée en 144\n");
     mem_show(afficher_zone);
     printf("\n");
-    mem_free(get_memory_adr()+24);
-    printf("Mémoire libérée en 24\n");
-    mem_show(afficher_zone);
+
 	// TEST OK
 	return 0;
 }

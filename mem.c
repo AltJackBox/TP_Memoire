@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
 // constante définie dans gcc seulement
 #ifdef __BIGGEST_ALIGNMENT__
@@ -114,40 +115,61 @@ void mem_fit(mem_fit_function_t *f) {
 	get_header()->fit = f;
 }
 
-/*Alloue une zone dans la mémoire selon la taille donnée par l'utilisateur*/
-
-void *mem_alloc(size_t taille_utilisateur) {
-
-	struct fb* ancienne_zl = memory_addr->fit(memory_addr->tete,taille_utilisateur + sizeof(struct zo));
-	if (ancienne_zl == NULL) return NULL;
-	struct zo* zone_allouee;
-	struct fb* nouv_first_block;
-	void* nouvelle_zl;
-	void* adr_fin = memory_addr + memory_addr->memory_size;
-	
-	/*La zone qui est allouée correspond à la zone libre trouvée avec la fonction fit*/
-	zone_allouee = (void *)ancienne_zl;
-	/*La taille finale de la zone allouée sera supérieure à celle donnée par l'utilisateur car on prend en compte la taille de la structure zo*/
-	zone_allouee->size = (size_t)allign((void *)(taille_utilisateur + sizeof(struct zo)),8);
-
-	nouvelle_zl = allign((void *)ancienne_zl + zone_allouee->size,8);
-
-	size_t taille_zl = (size_t)allign((void *)get_system_memory_size() - (nouvelle_zl - (void *)memory_addr),8);
-	
-	/*On gère le cas ou on n'a plus la place de créer une nouvelle zone libre*/
-	/*Cela signifie que la zone que nous avons précédemment allouée doit être plus grande, on l'additionne avec la taille de l'ancienne zl)*/
-	if ((nouvelle_zl > adr_fin) || (taille_zl < (size_t)allign((void *)(sizeof(struct zo) + 1),8))){ 
-		memory_addr->tete = NULL;
-		size_t za_ancienne_taille = zone_allouee->size;
-		zone_allouee->size = (size_t)allign((void *)(za_ancienne_taille + taille_zl), 8);
-	}else{
-		nouv_first_block = nouvelle_zl;
-		nouv_first_block->size = taille_zl;
-		nouv_first_block->next = NULL;
-
-		memory_addr->tete = nouv_first_block;
+//fonction pour mem_alloc qui gère le chaînage des zones_libres depuis le header
+void changer_next(struct fb* old_addr, struct fb* new_addr) {
+	struct allocator_header* head = get_system_memory_addr();
+	if (head->tete == old_addr) {
+		head->tete = new_addr;
+	} else {
+		struct fb* free_block = head->tete;
+		while(free_block != NULL && free_block->next != old_addr) {
+			free_block = free_block->next;
+		}
+		if (free_block != NULL && free_block->next == old_addr) {
+			free_block->next = new_addr;
+		} else {
+			/*UNE ERREUR S'EST PRODUITE (cas normalement impossible)*/
+			fprintf(stderr, "Quelque chose cloche avec la liste chaînée des ZL ...\n");
+			exit(-1);
+		}
 	}
-	return (void *)zone_allouee;
+}
+
+/*Alloue une zone dans la mémoire selon la taille donnée par l'utilisateur*/
+void *mem_alloc(size_t taille_utilisateur) {
+	struct allocator_header* mem = get_system_memory_addr();
+	struct fb* firstfb = mem->tete;
+	size_t alloc_size = taille_utilisateur + sizeof(struct zo); //taille de la zone à allouer
+	void* fb = (void*)mem->fit(firstfb, alloc_size);
+	if (fb == NULL) return NULL; //pas de bloc dispos, donc impossible.
+
+	/** Une zone mémoire d'adresse fb est disponible **/
+	void* new_potential_fb_addr = allign(fb + alloc_size, 8);
+	alloc_size = (size_t)(new_potential_fb_addr - fb); //on réajuste alloc size après l'alignement.
+	
+	//On calcule le Δ restant potentiel après l'alloc
+	size_t delta = (fb + ((struct fb*)fb)->size) - new_potential_fb_addr;
+	/*Si Δ < sizeof(struct fb), on a un problème,
+	 il faut donc pousser la taille de la futur ZO pour remplacer
+	 la ZL, il faut aussi gérer les pointeurs des zones libres.*/
+	if (delta < sizeof(struct fb)) {
+		alloc_size = ((struct fb*)fb)->size; //pas besoin de s'ennuyr avec l'alignement ici.
+		changer_next(fb, ((struct fb*)fb)->next);
+	} else {
+		/*Sinon, on réajuste le fb renvoyer par la fonction de fit pour la réduire en
+		fonction de la nouvelle zone occupée*/
+		//On déplace le contenu de la ZL a son nouvel emplacement
+		((struct fb*)new_potential_fb_addr)->size = delta;
+		((struct fb*)new_potential_fb_addr)->next = ((struct fb*)fb)->next;
+		//Puis on met à jour le pointeur de la ZL/Header concernant cette zone libre
+		changer_next(fb, new_potential_fb_addr);
+	}
+	
+	//On créer une nouvelle zone occupée de size alloc_size à l'adresse de la ZL d'addr fb
+	struct zo* ob = (struct zo*) fb;
+	ob->size = alloc_size;
+	//Et on retourne l'addr de la nouvelle zone occupée
+	return ob;
 }
 
 
@@ -166,8 +188,7 @@ void mem_free(void* mem) {
 
 	struct fb* zl_prev=NULL;
 	struct fb* zl_suiv=NULL;
-	
-	
+
 
 	/*On regarde s'il y a présence de zones libres avant ou après la zone à libérer*/
 

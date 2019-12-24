@@ -18,8 +18,10 @@ int main(int argc, char *argv[]) {
 			"| ZO | ZO | ZO | ZO | ---> | ZL : ZL : ZL : ZL |"
  		"\n");
 	printf("Initializing memory\n");
-    printf("On utilise une mémoire de taille 256 bytes\n");
+    printf("On utilise une mémoire de taille 256 bytes\n\n");
     
+    printf("\033[05;41m>\033[00m \033[01mIci, nous allons observer la fusion de l'apparition de zones\n\
+libres depuis la libération de zones occupées ...\033[00m\n");
     
 	mem_init(get_memory_adr(), (size_t)256);
     mem_show(afficher_zone);
